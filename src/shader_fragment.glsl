@@ -87,7 +87,7 @@ void main()
     vec3 Ka; // Refletância ambiente
     float q; // Expoente especular para o modelo de iluminação de Phong
 
-    if ( object_id == SPHERE )
+    if (object_id == SPHERE)
     {
         // PREENCHA AQUI as coordenadas de textura da esfera, computadas com
         // projeção esférica EM COORDENADAS DO MODELO. Utilize como referência
@@ -111,7 +111,7 @@ void main()
         U = (theta + M_PI)/ (2 * M_PI);
         V = (phi + M_PI_2)/ M_PI;
     }
-    else if ( object_id == SPACE_SHIP )
+    else if (object_id == SPACE_SHIP)
     {
         // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
         // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
@@ -135,7 +135,7 @@ void main()
 
         Ka = vec3(0.01,0.01,0.01);
     }
-    else if ( object_id == PLANE )
+    else if (object_id == PLANE)
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
         Kd = vec3(0.1,0.1,0.1);
@@ -145,7 +145,7 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
     }
-    else if (object_id == METEOR )
+    else if (object_id == METEOR)
     {
         // PREENCHA AQUI as coordenadas de textura da vaca, computadas com
         // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
@@ -170,12 +170,10 @@ void main()
 
 
     // Obtemos a refletância difusa a partir da leitura da imagem TextureImage_n
-    vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb; //vaca
-    vec3 Kd1 = texture(TextureImage1, vec2(U,V)).rgb; //plano
-    vec3 Kd2 = texture(TextureImage2, vec2(U,V)).rgb; //coelho
-    //vec3 Kd3 = texture(TextureImage3, vec2(U,V)).rgb; //Terra
-    //vec3 Kd3 = texture(TextureImage3, vec2(U,V)).rgb; //OVOS
-
+    vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
+    vec3 Kd1 = texture(TextureImage1, vec2(U,V)).rgb;
+    vec3 Kd2 = texture(TextureImage2, vec2(U,V)).rgb;
+    vec3 Kd3 = texture(TextureImage3, vec2(U,V)).rgb;
 
     // Equação de Iluminação
     float lambert = max(0,dot(n,l));
@@ -189,23 +187,23 @@ void main()
     // Espectro da luz ambiente
     vec3 ambient_light_spectrum = vec3(0.5,0.5,0.5);
 
-    if( object_id == METEOR ){
-        color = Kd0 * light_spectrum * lambert + Ka * ambient_light_spectrum; //difuso lambert
+    if(object_id == METEOR){
+        color = Kd0 * light_spectrum * lambert + Ka * ambient_light_spectrum; // Difuso lambert
     }
 
     else if(object_id == PLANE){
         color = Kd1 * light_spectrum * lambert
-          + Ka * ambient_light_spectrum                     //phong
+          + Ka * ambient_light_spectrum                     // Phong
           + Ks * light_spectrum * phong_specular_term;
     }
-    else if ( object_id == SPACE_SHIP){
+    else if (object_id == SPACE_SHIP){
         color = Kd2 * light_spectrum * lambert + Ka * ambient_light_spectrum
-        + Ks * light_spectrum * phong_specular_term;//phong
+        + Ks * light_spectrum * phong_specular_term;// Phong
 
     }
     else if(object_id == SPHERE){
         color = Kd2 * light_spectrum * lambert
-          + Ka * ambient_light_spectrum                     //phong
+          + Ka * ambient_light_spectrum                     // Phong
           + Ks * light_spectrum * phong_specular_term;
     }
 
