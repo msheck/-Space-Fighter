@@ -586,6 +586,7 @@ int main(int argc, char* argv[])
 
                 // Desenhamos o inimigo
                 model = Matrix_Translate(inimigos[i].pos_x, inimigos[i].pos_y, inimigos[i].pos_z)
+                        * Matrix_Scale(0.2f, 0.2f, 0.2f)
                         * Matrix_Rotate_Y(M_PI);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, METEOR);
@@ -610,6 +611,7 @@ int main(int argc, char* argv[])
                 inimigos[i].pos_x = inimigos[i].pos_x - 0.025f * inimigos[i].velocidade;
                 inimigos[i].pos_z = i - 5.0f;
                 model = Matrix_Translate(inimigos[i].pos_x, inimigos[i].pos_y, inimigos[i].pos_z)
+                        * Matrix_Scale(0.2f, 0.2f, 0.2f)
                         * Matrix_Rotate_Y(M_PI);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, METEOR);

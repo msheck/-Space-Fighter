@@ -1,0 +1,8 @@
+
+obj/Debug/src/main.o
+obj/Debug/src/glad.o
+bin/Debug/main.exe
+obj/Debug/src/stb_image.o
+obj/Debug/src/textrendering.o
+obj/Debug/src/tiny_obj_loader.o
+SpaceFighter.depend
