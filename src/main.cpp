@@ -268,6 +268,7 @@ typedef struct
     float pos_y;
     float pos_z;
     float velocidade; // Velocidade pertentencente a [1, 3]
+    bool na_tela;
 } BULLET;
 
 typedef struct
@@ -279,12 +280,13 @@ typedef struct
     int vivo;
     int velocidade; // Velocidade pertentencente a [13, 20]
     int pontos;
+    int pontos_vida;
 } ENEMY;
 //}
 //{ Game Functions Headers
 
 // Função do tiro na tela.
-int limite_do_tiro(BULLET tiro, int tiro_na_tela);
+int limite_do_tiro(BULLET tiro);
 
 // Função que verifica se o tiro acertou o inimigo.
 int tiro_acertou (BULLET tiro, ENEMY inimigo);
@@ -307,8 +309,8 @@ void desenha_inimigo(glm::mat4 model);
 #define DISTANCIA_INIMIGOS 30.0f
 #define CHANCE 25
 #define PONTOS 5
+#define N_TIRO 8            //numero max de tiros
 
-int tiro_na_tela = 0;       // Variável binária que determina se há projétil na tela ou não.
 int inimigos_na_tela = 0;   // Inicia sem inimigos
 int um_inimigo;             // Variável para ser usada em laços. Só um inimigo deve ser gerado a cada teste verdadeiro do laço.
 int i;
@@ -324,7 +326,7 @@ float posicao_x_do_tiro = 0.0f;
 int colisao = 0;
 
 SPACESHIP nave;             // Coordenadas da nave no cenário.
-BULLET tiro;                // Coordenadas do projétil no cenário.
+BULLET tiro[8];                // Coordenadas do projétil no cenário.
 SPACESHIP camera;
 ENEMY inimigos[NUM_INIMIGOS]; // A posição dos inimigos no cenário. Também diz se estão vivos ou não.
 
@@ -464,14 +466,10 @@ int main(int argc, char* argv[])
     glm::mat4 the_model;
     glm::mat4 the_view;
 
-    // Posição inicial da nave e do tiro
+    // Posição inicial da nave
     nave.pos_x = -2.0f;
-    tiro.pos_x =  0.0f;
-    nave.pos_y = tiro.pos_y = 0.0f;
-    nave.pos_z = tiro.pos_z = 0.0f;
-
-    // velocidade do tiro
-    tiro.velocidade = 0.3f;
+    nave.pos_y = 0.0f;
+    nave.pos_z = 0.0f;
 
 
     //Marca o início do programa.
@@ -594,16 +592,22 @@ int main(int argc, char* argv[])
         glUniform1i(object_id_uniform, SPACE_SHIP);
         DrawVirtualObject("spaceship");
 
-        tiro_na_tela = limite_do_tiro(tiro, tiro_na_tela);
+
 
         // Desenhamos o modelo do projétil
-        if(tiro_na_tela == 1)
+        for(int j=0; j<N_TIRO; j++)
         {
-            tiro.pos_x = tiro.pos_x + tiro.velocidade;
-            model = Matrix_Translate(tiro.pos_x, tiro.pos_y, tiro.pos_z) * Matrix_Scale(0.5f, 0.05f, 0.05f);
-            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-            glUniform1i(object_id_uniform, SPHERE);
-            DrawVirtualObject("sphere");
+            if(tiro[j].na_tela==1)
+            {
+                tiro[j].na_tela = limite_do_tiro(tiro[j]);
+                tiro[j].pos_x = tiro[j].pos_x + tiro[j].velocidade;
+
+                model = Matrix_Translate(tiro[j].pos_x, tiro[j].pos_y, tiro[j].pos_z) * Matrix_Scale(0.5f, 0.05f, 0.05f);
+                glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+                glUniform1i(object_id_uniform, SPHERE);
+                DrawVirtualObject("sphere");
+            }
+
         }
 
         tempo = difftime(time(NULL), t_inicio);
@@ -620,7 +624,7 @@ int main(int argc, char* argv[])
 
         if((((int)tempo%2) == 1 && tempo >= 1) || (inimigos_na_tela <= 10 && tempo>=1))
         {
-            for(i=0; i < (rand()%13) ; i++)
+            for(int j=0; j < (rand()%6) ; j++)
             {
                 i = ((rand() % NUM_INIMIGOS));
 
@@ -636,6 +640,7 @@ int main(int argc, char* argv[])
                     inimigos[i].size_mod = (((float)(rand()%9)*0.1f*i)/80.0f);
                     inimigos[i].velocidade = 13 + (rand() % 8);
                     inimigos[i].pontos = floor(inimigos[i].velocidade/4) * PONTOS;
+                    inimigos[i].pontos_vida = 1+(rand()%5);
                 }
             }
 
@@ -643,14 +648,22 @@ int main(int argc, char* argv[])
 
         for(i = 0; i < NUM_INIMIGOS; i++)
         {
-            // Verifica se o tiro acertou um inimigo
-            if (tiro_acertou(tiro, inimigos[i]) == 1 && tiro_na_tela == 1)
+            for(int j=0; j<N_TIRO; j++)
             {
-                tiro_na_tela = 0;
-                inimigos[i].vivo = 0;
-                inimigos_na_tela--;
-                nave.pontos = nave.pontos + inimigos[i].pontos;
+                // Verifica se o tiro acertou um inimigo
+            if (tiro_acertou(tiro[j], inimigos[i]) == 1 && tiro[j].na_tela == 1)
+            {
+                tiro[j].na_tela = 0;
+                inimigos[i].pontos_vida--;
+                if(inimigos[i].pontos_vida==0)
+                {
+                    inimigos[i].vivo = 0;
+                    inimigos_na_tela--;
+                    nave.pontos = nave.pontos + inimigos[i].pontos;
+                }
             }
+            }
+
 
             if(inimigos[i].vivo == 1)
             {
@@ -752,22 +765,23 @@ void desenha_inimigo(glm::mat4 model)
 }
 
 // Limite de tiro na tela
-int limite_do_tiro (BULLET tiro, int tiro_na_tela)
+int limite_do_tiro (BULLET tiro)
 {
     if(roundf(tiro.pos_x) >= 15)
     {
+        tiro.na_tela=false;
         return 0;
     }
     else
     {
-        return tiro_na_tela;
+        return 1;
     }
 }
 
 int tiro_acertou (BULLET tiro, ENEMY inimigo)
 {
-    if( ((inimigo.pos_z-1.15f-inimigo.size_mod<=tiro.pos_z && tiro.pos_z<=inimigo.pos_z+1.15f+inimigo.size_mod)
-       ||(inimigo.pos_z-1.15f-inimigo.size_mod<=tiro.pos_z && tiro.pos_z<=inimigo.pos_z+1.15f+inimigo.size_mod))
+    if( ((inimigo.pos_z-1.25f-inimigo.size_mod<=tiro.pos_z && tiro.pos_z<=inimigo.pos_z+1.25f+inimigo.size_mod)
+       ||(inimigo.pos_z-1.25f-inimigo.size_mod<=tiro.pos_z && tiro.pos_z<=inimigo.pos_z+1.25f+inimigo.size_mod))
        && roundf(inimigo.pos_x) == roundf(tiro.pos_x) && inimigo.vivo == 1)
     {
         return 1;
@@ -1552,14 +1566,20 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Tiro
     if(key == GLFW_KEY_Z && action == GLFW_PRESS)
     {
-        if (tiro_na_tela == 0)
+        for(int j=0; j < N_TIRO; j++)
         {
-            //Projétil
-            tiro_na_tela = 1;
-            tiro.pos_x = nave.pos_x;
-            tiro.pos_y = nave.pos_y;
-            tiro.pos_z = nave.pos_z;
+            if(tiro[j].na_tela==false)
+            {
+                tiro[j].na_tela=true;
+                tiro[j].pos_x = nave.pos_x;
+                tiro[j].pos_y = nave.pos_y;
+                tiro[j].pos_z = nave.pos_z;
+                tiro[j].velocidade = 0.3f;
+                break;
+            }
         }
+
+
     }
 }
 

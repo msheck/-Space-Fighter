@@ -110,6 +110,11 @@ void main()
 
         U = (theta + M_PI)/ (2 * M_PI);
         V = (phi + M_PI_2)/ M_PI;
+
+        Ka = vec3(0.2,0.1,0.1);
+        Kd = vec3(0.01,0.01,0.01);
+        Ks = vec3(0.5,0.2,0.2);
+        q = 10.0;
     }
     else if (object_id == SPACE_SHIP)
     {
@@ -123,14 +128,15 @@ void main()
         V = (phi + M_PI_2)/ M_PI;
 
         Ka = vec3(0.01,0.01,0.01);
+        Kd = vec3(0.01,0.01,0.01);
+        Ks = vec3(0.2,0.2,0.2);
+        q = 30.0;
     }
     else if (object_id == PLANE)
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
         Kd = vec3(0.1,0.1,0.1);
-        Ks = vec3(0.2,0.2,0.2);
-        Ka = vec3(0.01,0.01,0.01);
-        q = 30.0;
+
         U = texcoords.x;
         V = texcoords.y;
     }
@@ -155,6 +161,8 @@ void main()
 
         U = (p_modelo[0]-minx)/(maxx - minx);
         V = (p_modelo[1]-miny)/(maxy - miny);
+
+        Ka = vec3(0.01,0.01,0.01);
     }
 
 
