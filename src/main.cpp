@@ -71,48 +71,8 @@
 //Biblioteca para randomização
 #include <time.h>
 
-typedef struct
-{
-    float pos_x;
-    float pos_y;
-    float pos_z;
-    int pontos;
-} SPACESHIP;
+//----------------------------------------------------------------------------------------
 
-typedef struct
-{
-    float pos_x;
-    float pos_y;
-    float pos_z;
-    float velocidade; // Velocidade pertentencente a [1, 3]
-} BULLET;
-
-typedef struct
-{
-    float pos_x;
-    float pos_y;
-    float pos_z;
-    int vivo;
-    int velocidade; // Velocidade pertentencente a [1, 3]
-    int pontos;
-} ENEMY;
-
-int tiro_na_tela = 0; // Variável binária que determina se há projétil na tela ou não.
-int i;
-int um_inimigo; // Variável para ser usada em laços. Só um inimigo deve ser gerado a cada teste verdadeiro do laço.
-
-int inimigos_na_tela = 0; // Inicia sem inimigos
-
-time_t t_inicio, t_agora, t_fim;
-
-double tempo;
-
-SPACESHIP nave; // Coordenadas da nave no cenário.
-BULLET tiro; // Coordenadas do projétil no cenário.
-SPACESHIP camera;
-ENEMY inimigos[NUM_INIMIGOS]; // A posição dos inimigos no cenário. Também diz se estão vivos ou não.
-
-float posicao_x_do_tiro = 0.0f;
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -144,15 +104,6 @@ struct ObjModel
         printf("OK.\n");
     }
 };
-
-// Função do tiro na tela.
-int limite_do_tiro(BULLET tiro, int tiro_na_tela);
-
-// Função que verifica se o tiro acertou o inimigo.
-int tiro_acertou (BULLET tiro, ENEMY inimigo);
-
-// Função que verifica se a nave colidiu com o inimigo.
-int colisao_com_inimigo (SPACESHIP nave, ENEMY inimigo);
 
 // Declaração de funções utilizadas para pilha de matrizes de modelagem.
 void PushMatrix(glm::mat4 M);
@@ -270,6 +221,61 @@ GLint object_id_uniform;
 GLint bbox_min_uniform;
 GLint bbox_max_uniform;
 
+
+//--------------------------------------------------------------------------------------------
+
+typedef struct
+{
+    float pos_x;
+    float pos_y;
+    float pos_z;
+    int pontos;
+} SPACESHIP;
+
+typedef struct
+{
+    float pos_x;
+    float pos_y;
+    float pos_z;
+    float velocidade; // Velocidade pertentencente a [1, 3]
+} BULLET;
+
+typedef struct
+{
+    float pos_x;
+    float pos_y;
+    float pos_z;
+    int vivo;
+    int velocidade; // Velocidade pertentencente a [1, 3]
+    int pontos;
+} ENEMY;
+
+int tiro_na_tela = 0; // Variável binária que determina se há projétil na tela ou não.
+int i;
+int um_inimigo; // Variável para ser usada em laços. Só um inimigo deve ser gerado a cada teste verdadeiro do laço.
+
+int inimigos_na_tela = 0; // Inicia sem inimigos
+
+time_t t_inicio, t_agora, t_fim;
+
+double tempo;
+
+SPACESHIP nave; // Coordenadas da nave no cenário.
+BULLET tiro; // Coordenadas do projétil no cenário.
+SPACESHIP camera;
+ENEMY inimigos[NUM_INIMIGOS]; // A posição dos inimigos no cenário. Também diz se estão vivos ou não.
+
+float posicao_x_do_tiro = 0.0f;
+
+// Função do tiro na tela.
+int limite_do_tiro(BULLET tiro, int tiro_na_tela);
+
+// Função que verifica se o tiro acertou o inimigo.
+int tiro_acertou (BULLET tiro, ENEMY inimigo);
+
+// Função que verifica se a nave colidiu com o inimigo.
+int colisao_com_inimigo (SPACESHIP nave, ENEMY inimigo);
+
 int colisao = 0;
 
 // Número de texturas carregadas pela função LoadTextureImage()
@@ -350,10 +356,8 @@ int main(int argc, char* argv[])
     // Carregamos três imagens para serem utilizadas como textura
 
     LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
-    LoadTextureImage("../../data/space2.jpg");      // TextureImage1
-    LoadTextureImage("../../data/fur_texture.jpg");      // TextureImage2
-    //LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage3
-    //LoadTextureImage("../../data/egg_texture.jpg");      // TextureImage4
+    LoadTextureImage("../../data/space2.jpg");                       // TextureImage1
+    LoadTextureImage("../../data/fur_texture.jpg");                  // TextureImage2
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel spheremodel("../../data/sphere.obj");
@@ -407,7 +411,7 @@ int main(int argc, char* argv[])
     tiro.pos_x = 0.0f;
     tiro.pos_y = 0.0f;
     tiro.pos_z = 0.0f;
-    tiro.velocidade = 0.1f;
+    tiro.velocidade = 0.3f;
 
     // Posição inicial da camera
     camera.pos_x = 0.0f;
@@ -512,31 +516,15 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
 
-#define SPHERE 0
+#define SPHERE      0
 #define SPACE_SHIP  1
-#define PLANE  2
-#define METEOR 3
+#define PLANE       2
+#define METEOR      3
 
-        /*// Desenhamos o modelo da esfera
-        model = Matrix_Translate(6.0f,3.0f,0.0f)
-                * Matrix_Rotate_Z(0.6f)
-                * Matrix_Rotate_X(0.2f)
-                * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, SPHERE);
-        DrawVirtualObject("sphere");*/
-
-        /*// Desenhamos o modelo do coelho
-        model = Matrix_Translate(1.0f,0.0f,0.0f)
-              * Matrix_Rotate_X(g_AngleX + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, BUNNY);
-        DrawVirtualObject("bunny");*/
 
         // Desenhamos o plano do chão
         model = Matrix_Translate(9.0f,-1.1f,0.0f)
               * Matrix_Scale(15.0f, 5.0f, 20.0f);
-        //* Matrix_Rotate_Z(g_AngleX + (float)glfwGetTime() * 0.1f);
         glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(object_id_uniform, PLANE);
         DrawVirtualObject("plane");
@@ -674,6 +662,48 @@ int main(int argc, char* argv[])
 // Fim do programa
     return 0;
 }
+
+//----------------------------------------------------------------------------------------------------------------------------------
+
+// Limite de tiro na tela
+int limite_do_tiro (BULLET tiro, int tiro_na_tela)
+{
+    if(roundf(tiro.pos_x) >= 30)
+    {
+        return 0;
+    }
+    else
+    {
+        return tiro_na_tela;
+    }
+}
+
+int tiro_acertou (BULLET tiro, ENEMY inimigo)
+{
+    if (roundf(tiro.pos_x) == roundf(inimigo.pos_x) && roundf(tiro.pos_y) == roundf(inimigo.pos_y) && roundf(tiro.pos_z) == roundf(inimigo.pos_z))
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+int colisao_com_inimigo (SPACESHIP nave, ENEMY inimigo)
+{
+    if (roundf(nave.pos_x ) == roundf(inimigo.pos_x) && roundf(nave.pos_y) == roundf(inimigo.pos_y) && roundf(nave.pos_z ) == roundf(inimigo.pos_z))
+    {
+        colisao = 1;
+        return colisao;
+    }
+    else
+    {
+        return colisao;
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------
 
 // Função que carrega uma imagem para ser utilizada como textura
 void LoadTextureImage(const char* filename)
@@ -1477,43 +1507,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     }
 }
 
-// Limite de tiro na tela
-int limite_do_tiro (BULLET tiro, int tiro_na_tela)
-{
-    if(roundf(tiro.pos_x) >= 15)
-    {
-        return 0;
-    }
-    else
-    {
-        return tiro_na_tela;
-    }
-}
-
-int tiro_acertou (BULLET tiro, ENEMY inimigo)
-{
-    if (roundf(tiro.pos_x) == roundf(inimigo.pos_x) && roundf(tiro.pos_y) == roundf(inimigo.pos_y) && roundf(tiro.pos_z) == roundf(inimigo.pos_z))
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-int colisao_com_inimigo (SPACESHIP nave, ENEMY inimigo)
-{
-    if (roundf(nave.pos_x ) == roundf(inimigo.pos_x) && roundf(nave.pos_y) == roundf(inimigo.pos_y) && roundf(nave.pos_z ) == roundf(inimigo.pos_z))
-    {
-        colisao = 1;
-        return colisao;
-    }
-    else
-    {
-        return colisao;
-    }
-}
 // Definimos o callback para impressão de erros da GLFW no terminal
 void ErrorCallback(int error, const char* description)
 {
