@@ -1,18 +1,23 @@
-//     Universidade Federal do Rio Grande do Sul
-//             Instituto de Informática
-//       Departamento de Informática Aplicada
+//                         Universidade Federal do Rio Grande do Sul
+//                                 Instituto de Informática
+//                           Departamento de Informática Aplicada
 //
-// INF01047 Fundamentos de Computação Gráfica 2019/2
-//               Prof. Eduardo Gastal
+//                     INF01047 Fundamentos de Computação Gráfica 2019/2
+//                                   Prof. Eduardo Gastal
 //
-//                  Trabalho Final
-//sigo asi
-//                  SPACE FIGHTER
+//                                      Trabalho Final
+//                     sigo asi
+//                                      SPACE FIGHTER
 //
-//      206740 - MATEUS SEVERGNINI HECK
-//      246622 - OCTAVIO DO AMARANTE ARRUDA
-//
-//
+//                          206740 - MATEUS SEVERGNINI HECK
+//                          246622 - OCTAVIO DO AMARANTE ARRUDA
+
+
+
+
+//----------------------------------------------------------------------------------------------------------------------------------
+//{ Headers
+
 // Arquivos "headers" padrões de C podem ser incluídos em um
 // programa C++, sendo necessário somente adicionar o caractere
 // "c" antes de seu nome, e remover o sufixo ".h". Exemplo:
@@ -58,21 +63,14 @@
 #define M_PI   3.14159265358979323846
 #define M_PI_2 1.57079632679489661923
 
-//Constantes que vão definir o movimento da nave
-#define DISTANCIA 1.0f
-#define NUM_INIMIGOS 11
-#define DISTANCIA_INIMIGOS 30.0f
-#define CHANCE 25
-#define PONTOS 50
-
 //Bibliotecas para áudio
 #include "Mmsystem.h"
 
 //Biblioteca para randomização
 #include <time.h>
 
-//----------------------------------------------------------------------------------------
-
+//}
+//{ Lab Structs
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -104,6 +102,22 @@ struct ObjModel
         printf("OK.\n");
     }
 };
+
+// Definimos uma estrutura que armazenará dados necessários para renderizar
+// cada objeto da cena virtual.
+struct SceneObject
+{
+    std::string  name;        // Nome do objeto
+    void*        first_index; // Índice do primeiro vértice dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
+    int          num_indices; // Número de índices do objeto dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
+    GLenum       rendering_mode; // Modo de rasterização (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc.)
+    GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
+    glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
+    glm::vec3    bbox_max;
+};
+
+//}
+//{ Lab Functions
 
 // Declaração de funções utilizadas para pilha de matrizes de modelagem.
 void PushMatrix(glm::mat4 M);
@@ -150,18 +164,8 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
-// Definimos uma estrutura que armazenará dados necessários para renderizar
-// cada objeto da cena virtual.
-struct SceneObject
-{
-    std::string  name;        // Nome do objeto
-    void*        first_index; // Índice do primeiro vértice dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
-    int          num_indices; // Número de índices do objeto dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
-    GLenum       rendering_mode; // Modo de rasterização (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc.)
-    GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
-    glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
-    glm::vec3    bbox_max;
-};
+//}
+//{ Lab Global Variables
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
@@ -176,6 +180,11 @@ std::stack<glm::mat4>  g_MatrixStack;
 
 // Razão de proporção da janela (largura/altura). Veja função FramebufferSizeCallback().
 float g_ScreenRatio = 1.0f;
+
+// Variáveis globais que armazenam a última posição do cursor do mouse, para
+// que possamos calcular quanto que o mouse se movimentou entre dois instantes
+// de tempo. Utilizadas no callback CursorPosCallback().
+double g_LastCursorPosX, g_LastCursorPosY;
 
 // Ângulos de Euler que controlam a rotação de um dos cubos da cena virtual
 float g_AngleX = 0.0f;
@@ -221,9 +230,9 @@ GLint object_id_uniform;
 GLint bbox_min_uniform;
 GLint bbox_max_uniform;
 
-
-//--------------------------------------------------------------------------------------------
-
+//}
+//----------------------------------------------------------------------------------------------------------------------------------
+//{ Game Structs
 typedef struct
 {
     float pos_x;
@@ -245,27 +254,13 @@ typedef struct
     float pos_x;
     float pos_y;
     float pos_z;
+    float size_mod;
     int vivo;
     int velocidade; // Velocidade pertentencente a [1, 3]
     int pontos;
 } ENEMY;
-
-int tiro_na_tela = 0; // Variável binária que determina se há projétil na tela ou não.
-int i;
-int um_inimigo; // Variável para ser usada em laços. Só um inimigo deve ser gerado a cada teste verdadeiro do laço.
-
-int inimigos_na_tela = 0; // Inicia sem inimigos
-
-time_t t_inicio, t_agora, t_fim;
-
-double tempo;
-
-SPACESHIP nave; // Coordenadas da nave no cenário.
-BULLET tiro; // Coordenadas do projétil no cenário.
-SPACESHIP camera;
-ENEMY inimigos[NUM_INIMIGOS]; // A posição dos inimigos no cenário. Também diz se estão vivos ou não.
-
-float posicao_x_do_tiro = 0.0f;
+//}
+//{ Game Functions Headers
 
 // Função do tiro na tela.
 int limite_do_tiro(BULLET tiro, int tiro_na_tela);
@@ -276,13 +271,50 @@ int tiro_acertou (BULLET tiro, ENEMY inimigo);
 // Função que verifica se a nave colidiu com o inimigo.
 int colisao_com_inimigo (SPACESHIP nave, ENEMY inimigo);
 
+// Função que aplica as transformadas de matriz.
+glm::mat4 modela_inimigo(glm::mat4 model);
+
+// Função que desenha o inimigo.
+void desenha_inimigo(glm::mat4 model);
+
+//}
+//{ Game Global Variables
+
+//Constantes que vão definir o movimento da nave
+#define DISTANCIA 1.0f
+#define NUM_INIMIGOS 11
+#define DISTANCIA_INIMIGOS 30.0f
+#define CHANCE 25
+#define PONTOS 25
+
+int tiro_na_tela = 0; // Variável binária que determina se há projétil na tela ou não.
+int i;
+int um_inimigo; // Variável para ser usada em laços. Só um inimigo deve ser gerado a cada teste verdadeiro do laço.
+int inimigos_na_tela = 0; // Inicia sem inimigos
+
+time_t t_inicio, t_agora, t_fim;
+
+double tempo;
+
+float posicao_x_do_tiro = 0.0f;
+
 int colisao = 0;
+
+SPACESHIP nave; // Coordenadas da nave no cenário.
+BULLET tiro; // Coordenadas do projétil no cenário.
+SPACESHIP camera;
+ENEMY inimigos[NUM_INIMIGOS]; // A posição dos inimigos no cenário. Também diz se estão vivos ou não.
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
+//}
+//----------------------------------------------------------------------------------------------------------------------------------
+
 int main(int argc, char* argv[])
 {
+
+    //{ Init
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
     int success = glfwInit();
@@ -304,10 +336,10 @@ int main(int argc, char* argv[])
     // funções modernas de OpenGL.
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
+    // Criamos uma janela do sistema operacional, com 1000 colunas e 800 linhas
     // de pixels, e com título "INF01047".
     GLFWwindow* window;
-    window = glfwCreateWindow(1000, 800, "Invasion", NULL, NULL);
+    window = glfwCreateWindow(1000, 800, "Space Fighter", NULL, NULL);
 
     if (!window)
     {
@@ -347,6 +379,10 @@ int main(int argc, char* argv[])
 
     printf("GPU: %s, %s, OpenGL %s, GLSL %s\n", vendor, renderer, glversion, glslversion);
 
+    //}
+
+    //{ Shaders, Objects & Textures
+
     // Carregamos os shaders de vértices e de fragmentos que serão utilizados
     // para renderização. Veja slide 217 e 219 do documento no Moodle
     // "Aula_03_Rendering_Pipeline_Grafico.pdf".
@@ -354,11 +390,11 @@ int main(int argc, char* argv[])
     LoadShadersFromFiles();
 
     // Carregamos três imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/Meteor.jpg");      // TextureImage0
-    LoadTextureImage("../../data/space2.jpg");      // TextureImage1
-    LoadTextureImage("../../data/spaceship.jpg");      // TextureImage2
-    LoadTextureImage("../../data/spaceship.jpg"); // TextureImage3
-    //LoadTextureImage("../../data/egg_texture.jpg");      // TextureImage4
+    LoadTextureImage("../../data/Meteor.jpg");              // TextureImage0
+    LoadTextureImage("../../data/space2.jpg");              // TextureImage1
+    LoadTextureImage("../../data/spaceship.jpg");           // TextureImage2
+    LoadTextureImage("../../data/spaceship.jpg");           // TextureImage3
+    //LoadTextureImage("../../data/egg_texture.jpg");       // TextureImage4
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel spheremodel("../../data/sphere.obj");
@@ -370,15 +406,17 @@ int main(int argc, char* argv[])
     ComputeNormals(&spaceshipmodel);
     BuildTrianglesAndAddToVirtualScene(&spaceshipmodel);
 
-    // Trocar esse plane tb
+    // Plano Espaço
     ObjModel planemodel("../../data/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
 
-    // Asteroide
+    // Meteoro
     ObjModel meteormodel("../../data/Meteor.obj");
     ComputeNormals(&meteormodel);
     BuildTrianglesAndAddToVirtualScene(&meteormodel);
+
+    //}
 
     if ( argc > 1 )
     {
@@ -403,15 +441,13 @@ int main(int argc, char* argv[])
     glm::mat4 the_model;
     glm::mat4 the_view;
 
-    // Posição inicial da nave
-    nave.pos_x = 0.0f;
-    nave.pos_y = 0.0f;
-    nave.pos_z = 0.0f;
+    // Posição inicial da nave e do tiro
+    nave.pos_x = -2.0f;
+    tiro.pos_x =  0.0f;
+    nave.pos_y = tiro.pos_y = 0.0f;
+    nave.pos_z = tiro.pos_z = 0.0f;
 
-    // Posição inicial do tiro
-    tiro.pos_x = 0.0f;
-    tiro.pos_y = 0.0f;
-    tiro.pos_z = 0.0f;
+    // velocidade do tiro
     tiro.velocidade = 0.3f;
 
     // Posição inicial da camera
@@ -429,15 +465,15 @@ int main(int argc, char* argv[])
         inimigos[i].velocidade = 1 + rand() % 3;
     }
 
-    //Nova semente.
-    srand(time(NULL));
-
     //Marca o início do programa.
     t_inicio = time(NULL);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window) && colisao==0 && tempo <= 180)
     {
+        //Nova semente.
+        srand(time(NULL));
+
         // Aqui executamos as operações de renderização
 
         // Definimos a cor do "fundo" do framebuffer como preto.  Tal cor é
@@ -454,6 +490,8 @@ int main(int argc, char* argv[])
         // Pedimos para a GPU utilizar o programa de GPU criado acima (contendo
         // os shaders de vértice e fragmentos).
         glUseProgram(program_id);
+
+        //{ Camera
 
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
@@ -484,7 +522,7 @@ int main(int argc, char* argv[])
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo! Veja slides 198-200 do documento
         // "Aula_09_Projecoes.pdf".
-        float nearplane = -0.1f;  // Posição do "near plane"
+        float nearplane = -0.5f;  // Posição do "near plane"
         float farplane  = -90.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
@@ -492,7 +530,7 @@ int main(int argc, char* argv[])
             // Projeção Perspectiva.
             // Para definição do field of view (FOV), veja slide 234 do
             // documento "Aula_09_Projecoes.pdf".
-            float field_of_view = 3.141592 / 3.0f;
+            float field_of_view = 3.141592 / 2.0f;
             projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
         }
         else
@@ -509,6 +547,8 @@ int main(int argc, char* argv[])
             projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
         }
 
+        //}
+
         glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
@@ -517,11 +557,12 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
 
-#define SPHERE      0
-#define SPACE_SHIP  1
-#define PLANE       2
-#define METEOR      3
+        //{ Models
 
+        #define SPHERE      0
+        #define SPACE_SHIP  1
+        #define PLANE       2
+        #define METEOR      3
 
         // Desenhamos o plano do chão
         model = Matrix_Translate(9.0f,-1.1f,0.0f)
@@ -551,7 +592,9 @@ int main(int argc, char* argv[])
         }
 
         tempo = difftime(time(NULL), t_inicio);
+
         um_inimigo = 0;
+
         for (i = 0; i < NUM_INIMIGOS; i++)
         {
             if (inimigos[i].vivo == 1)
@@ -560,27 +603,26 @@ int main(int argc, char* argv[])
             }
         }
 
-        if((int)tempo %  5 == 0 && tempo != 0 && inimigos_na_tela < 5)
+        if(((int)tempo %  2 == 1 && tempo != 0) || inimigos_na_tela <= 5)
         {
             i = ((rand() % NUM_INIMIGOS));
 
             if (inimigos[i].vivo == 0)
             {
+                //Nova semente.
+                srand(time(NULL));
+
                 inimigos[i].vivo = 1;
                 inimigos[i].pos_x = DISTANCIA_INIMIGOS;
                 inimigos[i].pos_y = 0.0f;
                 inimigos[i].pos_z = i - 5.0f;
-                inimigos[i].velocidade = 1 + rand() % 3;
+                inimigos[i].size_mod = (float)((((rand()%11)-5)/10)*i);
+                inimigos[i].velocidade = 3 + rand() % 4;
                 inimigos[i].pontos = inimigos[i].velocidade * PONTOS;
 
                 // Desenhamos o inimigo
-                model = Matrix_Translate(inimigos[i].pos_x, inimigos[i].pos_y, inimigos[i].pos_z)
-                        * Matrix_Scale(0.2f, 0.2f, 0.2f)
-                        * Matrix_Rotate_Y(M_PI);
-                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                glUniform1i(object_id_uniform, METEOR);
-                DrawVirtualObject("Meteor");
-                inimigos_na_tela++;
+                model = modela_inimigo(model);
+                desenha_inimigo(model);
             }
         }
 
@@ -594,18 +636,16 @@ int main(int argc, char* argv[])
                 inimigos_na_tela--;
                 nave.pontos = nave.pontos + inimigos[i].pontos;
             }
+
             if(inimigos[i].vivo == 1)
             {
                 // Desenhamos o inimigo
                 inimigos[i].pos_x = inimigos[i].pos_x - 0.025f * inimigos[i].velocidade;
                 inimigos[i].pos_z = i - 5.0f;
-                model = Matrix_Translate(inimigos[i].pos_x, inimigos[i].pos_y, inimigos[i].pos_z)
-                        * Matrix_Scale(0.2f, 0.2f, 0.2f)
-                        * Matrix_Rotate_Y(M_PI);
-                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                glUniform1i(object_id_uniform, METEOR);
-                DrawVirtualObject("Meteor");
+                model = modela_inimigo(model);
+                desenha_inimigo(model);
             }
+
             if(inimigos[i].pos_x < -5.0f)
             {
                 inimigos[i].vivo = 0;
@@ -619,6 +659,8 @@ int main(int argc, char* argv[])
             }
 
         }
+
+        //}
 
         // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
         // passamos por todos os sistemas de coordenadas armazenados nas
@@ -666,6 +708,26 @@ int main(int argc, char* argv[])
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
+//{ Game Functions
+
+glm::mat4 modela_inimigo(glm::mat4 model)
+{
+    return model = Matrix_Translate(inimigos[i].pos_x, inimigos[i].pos_y, inimigos[i].pos_z)
+                  * Matrix_Scale(0.2f, 0.15f + inimigos[i].size_mod, 0.25f + inimigos[i].size_mod)
+                  * Matrix_Rotate_Z(g_AngleZ + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+1*i)/40)) )
+                  * Matrix_Rotate_X(g_AngleX + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+1*i)/40)) )
+                  * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+1*i)/40)) );
+
+}
+
+void desenha_inimigo(glm::mat4 model)
+{
+    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+    glUniform1i(object_id_uniform, METEOR);
+    DrawVirtualObject("Meteor");
+    inimigos_na_tela++;
+}
+
 // Limite de tiro na tela
 int limite_do_tiro (BULLET tiro, int tiro_na_tela)
 {
@@ -681,7 +743,7 @@ int limite_do_tiro (BULLET tiro, int tiro_na_tela)
 
 int tiro_acertou (BULLET tiro, ENEMY inimigo)
 {
-    if (roundf(tiro.pos_x) == roundf(inimigo.pos_x) && roundf(tiro.pos_y) == roundf(inimigo.pos_y) && roundf(tiro.pos_z) == roundf(inimigo.pos_z))
+    if (roundf(tiro.pos_x) == roundf(inimigo.pos_x) && roundf(tiro.pos_y) == roundf(inimigo.pos_y) && roundf(tiro.pos_z) == roundf(inimigo.pos_z) && inimigo.vivo == 1)
     {
         return 1;
     }
@@ -703,8 +765,11 @@ int colisao_com_inimigo (SPACESHIP nave, ENEMY inimigo)
         return colisao;
     }
 }
+//}
 
-//----------------------------------------------------------------------------------------------------------------------------------
+// Lab Functions -------------------------------------------------------------------------------------------------------------------
+
+//{ Render Models
 
 // Função que carrega uma imagem para ser utilizada como textura
 void LoadTextureImage(const char* filename)
@@ -789,79 +854,6 @@ void DrawVirtualObject(const char* object_name)
     // "Desligamos" o VAO, evitando assim que operações posteriores venham a
     // alterar o mesmo. Isso evita bugs.
     glBindVertexArray(0);
-}
-
-// Função que carrega os shaders de vértices e de fragmentos que serão
-// utilizados para renderização. Veja slide 217 e 219 do documento
-// "Aula_03_Rendering_Pipeline_Grafico.pdf".
-//
-void LoadShadersFromFiles()
-{
-    // Note que o caminho para os arquivos "shader_vertex.glsl" e
-    // "shader_fragment.glsl" estão fixados, sendo que assumimos a existência
-    // da seguinte estrutura no sistema de arquivos:
-    //
-    //    + FCG_Lab_01/
-    //    |
-    //    +--+ bin/
-    //    |  |
-    //    |  +--+ Release/  (ou Debug/ ou Linux/)
-    //    |     |
-    //    |     o-- main.exe
-    //    |
-    //    +--+ src/
-    //       |
-    //       o-- shader_vertex.glsl
-    //       |
-    //       o-- shader_fragment.glsl
-    //
-    vertex_shader_id = LoadShader_Vertex("../../src/shader_vertex.glsl");
-    fragment_shader_id = LoadShader_Fragment("../../src/shader_fragment.glsl");
-
-    // Deletamos o programa de GPU anterior, caso ele exista.
-    if ( program_id != 0 )
-        glDeleteProgram(program_id);
-
-    // Criamos um programa de GPU utilizando os shaders carregados acima.
-    program_id = CreateGpuProgram(vertex_shader_id, fragment_shader_id);
-
-    // Buscamos o endereço das variáveis definidas dentro do Vertex Shader.
-    // Utilizaremos estas variáveis para enviar dados para a placa de vídeo
-    // (GPU)! Veja arquivo "shader_vertex.glsl" e "shader_fragment.glsl".
-    model_uniform           = glGetUniformLocation(program_id, "model"); // Variável da matriz "model"
-    view_uniform            = glGetUniformLocation(program_id, "view"); // Variável da matriz "view" em shader_vertex.glsl
-    projection_uniform      = glGetUniformLocation(program_id, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
-    object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
-    bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
-    bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
-
-    // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
-    glUseProgram(program_id);
-    glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
-    glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
-    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
-    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 3);
-    glUseProgram(0);
-}
-
-// Função que pega a matriz M e guarda a mesma no topo da pilha
-void PushMatrix(glm::mat4 M)
-{
-    g_MatrixStack.push(M);
-}
-
-// Função que remove a matriz atualmente no topo da pilha e armazena a mesma na variável M
-void PopMatrix(glm::mat4& M)
-{
-    if ( g_MatrixStack.empty() )
-    {
-        M = Matrix_Identity();
-    }
-    else
-    {
-        M = g_MatrixStack.top();
-        g_MatrixStack.pop();
-    }
 }
 
 // Função que computa as normais de um ObjModel, caso elas não tenham sido
@@ -1063,6 +1055,85 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
     glBindVertexArray(0);
 }
 
+//}
+//{ Pop Push Matrix
+
+// Função que pega a matriz M e guarda a mesma no topo da pilha
+void PushMatrix(glm::mat4 M)
+{
+    g_MatrixStack.push(M);
+}
+
+// Função que remove a matriz atualmente no topo da pilha e armazena a mesma na variável M
+void PopMatrix(glm::mat4& M)
+{
+    if ( g_MatrixStack.empty() )
+    {
+        M = Matrix_Identity();
+    }
+    else
+    {
+        M = g_MatrixStack.top();
+        g_MatrixStack.pop();
+    }
+}
+
+//}
+//{ Load Shaders
+
+// Função que carrega os shaders de vértices e de fragmentos que serão
+// utilizados para renderização. Veja slide 217 e 219 do documento
+// "Aula_03_Rendering_Pipeline_Grafico.pdf".
+//
+void LoadShadersFromFiles()
+{
+    // Note que o caminho para os arquivos "shader_vertex.glsl" e
+    // "shader_fragment.glsl" estão fixados, sendo que assumimos a existência
+    // da seguinte estrutura no sistema de arquivos:
+    //
+    //    + FCG_Lab_01/
+    //    |
+    //    +--+ bin/
+    //    |  |
+    //    |  +--+ Release/  (ou Debug/ ou Linux/)
+    //    |     |
+    //    |     o-- main.exe
+    //    |
+    //    +--+ src/
+    //       |
+    //       o-- shader_vertex.glsl
+    //       |
+    //       o-- shader_fragment.glsl
+    //
+    vertex_shader_id = LoadShader_Vertex("../../src/shader_vertex.glsl");
+    fragment_shader_id = LoadShader_Fragment("../../src/shader_fragment.glsl");
+
+    // Deletamos o programa de GPU anterior, caso ele exista.
+    if ( program_id != 0 )
+        glDeleteProgram(program_id);
+
+    // Criamos um programa de GPU utilizando os shaders carregados acima.
+    program_id = CreateGpuProgram(vertex_shader_id, fragment_shader_id);
+
+    // Buscamos o endereço das variáveis definidas dentro do Vertex Shader.
+    // Utilizaremos estas variáveis para enviar dados para a placa de vídeo
+    // (GPU)! Veja arquivo "shader_vertex.glsl" e "shader_fragment.glsl".
+    model_uniform           = glGetUniformLocation(program_id, "model"); // Variável da matriz "model"
+    view_uniform            = glGetUniformLocation(program_id, "view"); // Variável da matriz "view" em shader_vertex.glsl
+    projection_uniform      = glGetUniformLocation(program_id, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
+    object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
+    bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
+    bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
+
+    // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
+    glUseProgram(program_id);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 3);
+    glUseProgram(0);
+}
+
 // Carrega um Vertex Shader de um arquivo GLSL. Veja definição de LoadShader() abaixo.
 GLuint LoadShader_Vertex(const char* filename)
 {
@@ -1163,57 +1234,8 @@ void LoadShader(const char* filename, GLuint shader_id)
     // A chamada "delete" em C++ é equivalente ao "free()" do C
     delete [] log;
 }
-
-// Esta função cria um programa de GPU, o qual contém obrigatoriamente um
-// Vertex Shader e um Fragment Shader.
-GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id)
-{
-    // Criamos um identificador (ID) para este programa de GPU
-    GLuint program_id = glCreateProgram();
-
-    // Definição dos dois shaders GLSL que devem ser executados pelo programa
-    glAttachShader(program_id, vertex_shader_id);
-    glAttachShader(program_id, fragment_shader_id);
-
-    // Linkagem dos shaders acima ao programa
-    glLinkProgram(program_id);
-
-    // Verificamos se ocorreu algum erro durante a linkagem
-    GLint linked_ok = GL_FALSE;
-    glGetProgramiv(program_id, GL_LINK_STATUS, &linked_ok);
-
-    // Imprime no terminal qualquer erro de linkagem
-    if ( linked_ok == GL_FALSE )
-    {
-        GLint log_length = 0;
-        glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &log_length);
-
-        // Alocamos memória para guardar o log de compilação.
-        // A chamada "new" em C++ é equivalente ao "malloc()" do C.
-        GLchar* log = new GLchar[log_length];
-
-        glGetProgramInfoLog(program_id, log_length, &log_length, log);
-
-        std::string output;
-
-        output += "ERROR: OpenGL linking of program failed.\n";
-        output += "== Start of link log\n";
-        output += log;
-        output += "\n== End of link log\n";
-
-        // A chamada "delete" em C++ é equivalente ao "free()" do C
-        delete [] log;
-
-        fprintf(stderr, "%s", output.c_str());
-    }
-
-    // Os "Shader Objects" podem ser marcados para deleção após serem linkados
-    glDeleteShader(vertex_shader_id);
-    glDeleteShader(fragment_shader_id);
-
-    // Retornamos o ID gerado acima
-    return program_id;
-}
+//}
+//{ CallBack
 
 // Definição da função que será chamada sempre que a janela do sistema
 // operacional for redimensionada, por consequência alterando o tamanho do
@@ -1237,11 +1259,6 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
     // serem divididos!
     g_ScreenRatio = (float)width / height;
 }
-
-// Variáveis globais que armazenam a última posição do cursor do mouse, para
-// que possamos calcular quanto que o mouse se movimentou entre dois instantes
-// de tempo. Utilizadas no callback CursorPosCallback() abaixo.
-double g_LastCursorPosX, g_LastCursorPosY;
 
 // Função callback chamada sempre que o usuário aperta algum dos botões do mouse
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -1514,6 +1531,8 @@ void ErrorCallback(int error, const char* description)
 {
     fprintf(stderr, "ERROR: GLFW: %s\n", description);
 }
+//}
+//{ Text Rendering
 
 // Esta função recebe um vértice com coordenadas de modelo p_model e passa o
 // mesmo por todos os sistemas de coordenadas armazenados nas matrizes model,
@@ -1639,6 +1658,62 @@ void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
 
     TextRendering_PrintString(window, buffer, 1.0f-(numchars + 1)*charwidth, 1.0f-lineheight, 1.0f);
 }
+//}
+//{ GPU program
+
+// Esta função cria um programa de GPU, o qual contém obrigatoriamente um
+// Vertex Shader e um Fragment Shader.
+GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id)
+{
+    // Criamos um identificador (ID) para este programa de GPU
+    GLuint program_id = glCreateProgram();
+
+    // Definição dos dois shaders GLSL que devem ser executados pelo programa
+    glAttachShader(program_id, vertex_shader_id);
+    glAttachShader(program_id, fragment_shader_id);
+
+    // Linkagem dos shaders acima ao programa
+    glLinkProgram(program_id);
+
+    // Verificamos se ocorreu algum erro durante a linkagem
+    GLint linked_ok = GL_FALSE;
+    glGetProgramiv(program_id, GL_LINK_STATUS, &linked_ok);
+
+    // Imprime no terminal qualquer erro de linkagem
+    if ( linked_ok == GL_FALSE )
+    {
+        GLint log_length = 0;
+        glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &log_length);
+
+        // Alocamos memória para guardar o log de compilação.
+        // A chamada "new" em C++ é equivalente ao "malloc()" do C.
+        GLchar* log = new GLchar[log_length];
+
+        glGetProgramInfoLog(program_id, log_length, &log_length, log);
+
+        std::string output;
+
+        output += "ERROR: OpenGL linking of program failed.\n";
+        output += "== Start of link log\n";
+        output += log;
+        output += "\n== End of link log\n";
+
+        // A chamada "delete" em C++ é equivalente ao "free()" do C
+        delete [] log;
+
+        fprintf(stderr, "%s", output.c_str());
+    }
+
+    // Os "Shader Objects" podem ser marcados para deleção após serem linkados
+    glDeleteShader(vertex_shader_id);
+    glDeleteShader(fragment_shader_id);
+
+    // Retornamos o ID gerado acima
+    return program_id;
+}
+
+//}
+//{ Print Obj Info
 
 // Função para debugging: imprime no terminal todas informações de um modelo
 // geométrico carregado de um arquivo ".obj".
@@ -1823,6 +1898,7 @@ void PrintObjModelInfo(ObjModel* model)
         printf("\n");
     }
 }
+//}
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :

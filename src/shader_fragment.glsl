@@ -113,25 +113,14 @@ void main()
     }
     else if (object_id == SPACE_SHIP)
     {
-        // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
-        // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
-        // o slide 106 do documento "Aula_20_e_21_Mapeamento_de_Texturas.pdf",
-        // e também use as variáveis min*/max* definidas abaixo para normalizar
-        // as coordenadas de textura U e V dentro do intervalo [0,1]. Para
-        // tanto, veja por exemplo o mapeamento da variável 'h' no slide 149 do
-        // documento "Aula_20_e_21_Mapeamento_de_Texturas.pdf".
+        vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
 
-        float minx = bbox_min.x;
-        float maxx = bbox_max.x;
+        ro = sqrt(p_modelo[0]*p_modelo[0]+p_modelo[1]*p_modelo[1]+p_modelo[2]*p_modelo[2]);
+        theta = atan(p_modelo[0], p_modelo[2]);
+        phi = asin(p_modelo[1]/ro);
 
-        float miny = bbox_min.y;
-        float maxy = bbox_max.y;
-
-        float minz = bbox_min.z;
-        float maxz = bbox_max.z;
-
-        U = (p_modelo[0]-minx)/(maxx - minx);
-        V = (p_modelo[1]-miny)/(maxy - miny);
+        U = (theta + M_PI)/ (2 * M_PI);
+        V = (phi + M_PI_2)/ M_PI;
 
         Ka = vec3(0.01,0.01,0.01);
     }
@@ -187,24 +176,28 @@ void main()
     // Espectro da luz ambiente
     vec3 ambient_light_spectrum = vec3(0.5,0.5,0.5);
 
-    if(object_id == METEOR){
-        color = Kd0 * light_spectrum * lambert + Ka * ambient_light_spectrum; // Difuso lambert
+    if(object_id == METEOR)                                 // Iluminação difusa com ambiente
+    {
+        color = Kd0 * light_spectrum * lambert
+              + Ka * ambient_light_spectrum;
     }
 
-    else if(object_id == PLANE){
-        color = Kd1 * light_spectrum * lambert
-          + Ka * ambient_light_spectrum                     // Phong
-          + Ks * light_spectrum * phong_specular_term;
+    else if(object_id == PLANE)                             // Iluminação difusa sem ambiente
+    {
+        color = Kd1 * light_spectrum * lambert;
     }
-    else if (object_id == SPACE_SHIP){
-        color = Kd2 * light_spectrum * lambert + Ka * ambient_light_spectrum
-        + Ks * light_spectrum * phong_specular_term;// Phong
 
-    }
-    else if(object_id == SPHERE){
+    else if (object_id == SPACE_SHIP)                       // Iluninação de Phong
+    {
         color = Kd2 * light_spectrum * lambert
-          + Ka * ambient_light_spectrum                     // Phong
-          + Ks * light_spectrum * phong_specular_term;
+              + Ka * ambient_light_spectrum
+              + Ks * light_spectrum * phong_specular_term;
+    }
+    else if(object_id == SPHERE)                            // Iluninação de Phong
+    {
+        color = Kd1 * light_spectrum * lambert
+              + Ka * ambient_light_spectrum
+              + Ks * light_spectrum * phong_specular_term;
     }
 
 
