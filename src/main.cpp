@@ -146,6 +146,8 @@ void TextRendering_PrintMatrix(GLFWwindow* window, glm::mat4 M, float x, float y
 void TextRendering_PrintVector(GLFWwindow* window, glm::vec4 v, float x, float y, float scale = 1.0f);
 void TextRendering_PrintMatrixVectorProduct(GLFWwindow* window, glm::mat4 M, glm::vec4 v, float x, float y, float scale = 1.0f);
 void TextRendering_PrintMatrixVectorProductDivW(GLFWwindow* window, glm::mat4 M, glm::vec4 v, float x, float y, float scale = 1.0f);
+void TextRendering_GameOver(GLFWwindow* window);
+void TextRendering_Instructions(GLFWwindow* window);
 
 // Funções abaixo renderizam como texto na janela OpenGL algumas matrizes e
 // outras informações do programa. Definidas após main().
@@ -197,13 +199,32 @@ bool g_LeftMouseButtonPressed = false;
 bool g_RightMouseButtonPressed = false; // Análogo para botão direito do mouse
 bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mouse
 
+bool g_PressSpace = false;
+
 // Variáveis que definem a câmera em coordenadas esféricas, controladas pelo
 // usuário através do mouse (veja função CursorPosCallback()). A posição
 // efetiva da câmera é calculada dentro da função main(), dentro do loop de
 // renderização.
-float g_CameraTheta = 1.5f; // Ângulo no plano ZX em relação ao eixo Z
-float g_CameraPhi = 2.5f;   // Ângulo em relação ao eixo Y
-float g_CameraDistance = 7.0f; // Distância da câmera para a origem
+float g_CameraTheta = M_PI/2; // Ângulo no plano ZX em relação ao eixo Z
+float g_CameraPhi = 2.8f;   // Ângulo em relação ao eixo Y
+float g_CameraDistance = 10.0f; // Distância da câmera para a origem
+
+// Computamos a posição da câmera utilizando coordenadas esféricas.  As
+// variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
+// controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
+// e ScrollCallback().
+float r = g_CameraDistance;
+float y = r*sin(g_CameraPhi);
+float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
+float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
+
+glm::vec4 camera_position_c;
+glm::vec4 camera_lookat_l;
+glm::vec4 camera_view_vector;
+glm::vec4 camera_up_vector;
+
+glm::mat4 view;
+
 
 // Variáveis que controlam rotação do antebraço
 float g_ForearmAngleZ = 0.0f;
@@ -256,7 +277,7 @@ typedef struct
     float pos_z;
     float size_mod;
     int vivo;
-    int velocidade; // Velocidade pertentencente a [1, 3]
+    int velocidade; // Velocidade pertentencente a [13, 20]
     int pontos;
 } ENEMY;
 //}
@@ -282,15 +303,17 @@ void desenha_inimigo(glm::mat4 model);
 
 //Constantes que vão definir o movimento da nave
 #define DISTANCIA 1.0f
-#define NUM_INIMIGOS 11
+#define NUM_INIMIGOS 23
 #define DISTANCIA_INIMIGOS 30.0f
 #define CHANCE 25
-#define PONTOS 25
+#define PONTOS 5
 
-int tiro_na_tela = 0; // Variável binária que determina se há projétil na tela ou não.
+int tiro_na_tela = 0;       // Variável binária que determina se há projétil na tela ou não.
+int inimigos_na_tela = 0;   // Inicia sem inimigos
+int um_inimigo;             // Variável para ser usada em laços. Só um inimigo deve ser gerado a cada teste verdadeiro do laço.
 int i;
-int um_inimigo; // Variável para ser usada em laços. Só um inimigo deve ser gerado a cada teste verdadeiro do laço.
-int inimigos_na_tela = 0; // Inicia sem inimigos
+
+float movement = 0;         // Variável que registra o movemento efetuado pelo jogador
 
 time_t t_inicio, t_agora, t_fim;
 
@@ -300,8 +323,8 @@ float posicao_x_do_tiro = 0.0f;
 
 int colisao = 0;
 
-SPACESHIP nave; // Coordenadas da nave no cenário.
-BULLET tiro; // Coordenadas do projétil no cenário.
+SPACESHIP nave;             // Coordenadas da nave no cenário.
+BULLET tiro;                // Coordenadas do projétil no cenário.
 SPACESHIP camera;
 ENEMY inimigos[NUM_INIMIGOS]; // A posição dos inimigos no cenário. Também diz se estão vivos ou não.
 
@@ -450,26 +473,12 @@ int main(int argc, char* argv[])
     // velocidade do tiro
     tiro.velocidade = 0.3f;
 
-    // Posição inicial da camera
-    camera.pos_x = 0.0f;
-    camera.pos_y = 0.0f;
-    camera.pos_z = 0.0f;
-
-    //Posição dos inimigos
-    for (i = 0; i < NUM_INIMIGOS; i++)
-    {
-        inimigos[i].pos_x = DISTANCIA_INIMIGOS;
-        inimigos[i].pos_y = 0.0f;
-        inimigos[i].pos_z = i;
-        inimigos[i].vivo = 0;
-        inimigos[i].velocidade = 1 + rand() % 3;
-    }
 
     //Marca o início do programa.
     t_inicio = time(NULL);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
-    while (!glfwWindowShouldClose(window) && colisao==0 && tempo <= 180)
+    while (!glfwWindowShouldClose(window)&&colisao==0)
     {
         //Nova semente.
         srand(time(NULL));
@@ -497,24 +506,30 @@ int main(int argc, char* argv[])
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
         // e ScrollCallback().
-        float r = g_CameraDistance;
-        float y = r*sin(g_CameraPhi);
-        float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
-        float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
+
+        // Camera Auxiliar
+        r = g_CameraDistance;
+        camera.pos_y = r*sin(g_CameraPhi);
+        camera.pos_z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
+        camera.pos_x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         // Veja slide 165 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
-        glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
-        //glm::vec4 camera_position_c  = glm::vec4(camera.pos_x, camera.pos_y, camera.pos_z, 1.0f); // Ponto "c", centro da câmera
-        //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-        glm::vec4 camera_lookat_l    = glm::vec4(camera.pos_x, camera.pos_y, camera.pos_z, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-        glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+
+        //A camera fica fica atras da nave a menos que o cursor seja precionado
+        if (g_LeftMouseButtonPressed)
+            camera_position_c  = glm::vec4(camera.pos_x,camera.pos_y,camera.pos_z,1.0f);
+        else
+            camera_position_c  = glm::vec4(x,y,z,1.0f);
+
+        camera_lookat_l    = glm::vec4(nave.pos_x, nave.pos_y, nave.pos_z, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+        camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
+        camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slide 169 do
         // documento "Aula_08_Sistemas_de_Coordenadas.pdf".
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+        view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
         // Agora computamos a matriz de Projeção.
         glm::mat4 projection;
@@ -530,7 +545,7 @@ int main(int argc, char* argv[])
             // Projeção Perspectiva.
             // Para definição do field of view (FOV), veja slide 234 do
             // documento "Aula_09_Projecoes.pdf".
-            float field_of_view = 3.141592 / 2.0f;
+            float field_of_view = 3.141592 / 3.0f;
             projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
         }
         else
@@ -565,8 +580,8 @@ int main(int argc, char* argv[])
         #define METEOR      3
 
         // Desenhamos o plano do chão
-        model = Matrix_Translate(9.0f,-1.1f,0.0f)
-              * Matrix_Scale(15.0f, 5.0f, 20.0f);
+        model = Matrix_Translate(20.0f,-5.0f,0.0f+movement)
+              * Matrix_Scale(40.0f, 5.0f, 20.0f);
         glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(object_id_uniform, PLANE);
         DrawVirtualObject("plane");
@@ -603,27 +618,27 @@ int main(int argc, char* argv[])
             }
         }
 
-        if(((int)tempo %  2 == 1 && tempo != 0) || inimigos_na_tela <= 5)
+        if((((int)tempo%2) == 1 && tempo >= 1) || (inimigos_na_tela <= 10 && tempo>=1))
         {
-            i = ((rand() % NUM_INIMIGOS));
-
-            if (inimigos[i].vivo == 0)
+            for(i=0; i < (rand()%13) ; i++)
             {
-                //Nova semente.
-                srand(time(NULL));
+                i = ((rand() % NUM_INIMIGOS));
 
-                inimigos[i].vivo = 1;
-                inimigos[i].pos_x = DISTANCIA_INIMIGOS;
-                inimigos[i].pos_y = 0.0f;
-                inimigos[i].pos_z = i - 5.0f;
-                inimigos[i].size_mod = (float)((((rand()%11)-5)/10)*i);
-                inimigos[i].velocidade = 3 + rand() % 4;
-                inimigos[i].pontos = inimigos[i].velocidade * PONTOS;
+                if (inimigos[i].vivo != 1)
+                {
+                    //Nova semente.
+                    srand(time(NULL));
 
-                // Desenhamos o inimigo
-                model = modela_inimigo(model);
-                desenha_inimigo(model);
+                    inimigos[i].vivo = 1;
+                    inimigos[i].pos_x = DISTANCIA_INIMIGOS;
+                    inimigos[i].pos_y = 0.0f;
+                    inimigos[i].pos_z = (floor((float)(i%NUM_INIMIGOS)/2) - 5.0f);
+                    inimigos[i].size_mod = (((float)(rand()%9)*0.1f*i)/80.0f);
+                    inimigos[i].velocidade = 13 + (rand() % 8);
+                    inimigos[i].pontos = floor(inimigos[i].velocidade/4) * PONTOS;
+                }
             }
+
         }
 
         for(i = 0; i < NUM_INIMIGOS; i++)
@@ -641,7 +656,6 @@ int main(int argc, char* argv[])
             {
                 // Desenhamos o inimigo
                 inimigos[i].pos_x = inimigos[i].pos_x - 0.025f * inimigos[i].velocidade;
-                inimigos[i].pos_z = i - 5.0f;
                 model = modela_inimigo(model);
                 desenha_inimigo(model);
             }
@@ -652,25 +666,30 @@ int main(int argc, char* argv[])
                 inimigos_na_tela--;
             }
 
-            if ((colisao = colisao_com_inimigo(nave, inimigos[i])))
-            {
-                //Fecha a janela caso algum inimigo acerte a nave.
-                glfwWindowShouldClose(window);
-            }
+            colisao = colisao_com_inimigo(nave, inimigos[i]);
 
         }
 
+
+
+
         //}
 
-        // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
-        // passamos por todos os sistemas de coordenadas armazenados nas
-        // matrizes the_model, the_view, e the_projection; e escrevemos na tela
-        // as matrizes e pontos resultantes dessas transformações.
-        //glm::vec4 p_model(0.5f, 0.5f, 0.5f, 1.0f);
-        //TextRendering_ShowModelViewProjection(window, projection, view, model, p_model);
+        if(colisao == 1)
+        {
+            g_ShowInfoText=false;
 
-        // Imprimimos na tela os ângulos de Euler que controlam a rotação do
-        // terceiro cubo.
+            TextRendering_GameOver(window);
+
+            glfwSetWindowShouldClose(window,(int)g_PressSpace);
+
+        }
+
+        if(tempo<=3)
+        {
+            TextRendering_Instructions(window);
+        }
+
 
         // Imprimimos na tela a pontuação do jogador
         TextRendering_ShowScore(window);
@@ -695,6 +714,10 @@ int main(int argc, char* argv[])
         // definidas anteriormente usando glfwSet*Callback() serão chamadas
         // pela biblioteca GLFW.
         glfwPollEvents();
+
+
+
+
     }
     printf("GAME OVER!\n");
     printf("Score: %i", nave.pontos);
@@ -714,9 +737,9 @@ glm::mat4 modela_inimigo(glm::mat4 model)
 {
     return model = Matrix_Translate(inimigos[i].pos_x, inimigos[i].pos_y, inimigos[i].pos_z)
                   * Matrix_Scale(0.2f, 0.15f + inimigos[i].size_mod, 0.25f + inimigos[i].size_mod)
-                  * Matrix_Rotate_Z(g_AngleZ + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+1*i)/40)) )
-                  * Matrix_Rotate_X(g_AngleX + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+1*i)/40)) )
-                  * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+1*i)/40)) );
+                  * Matrix_Rotate_Z(g_AngleZ + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+0.5f*((float)i))/40.0f)) )
+                  * Matrix_Rotate_X(g_AngleX + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+0.5f*((float)i))/40.0f)) )
+                  * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime()* 0.5f + ((float)((((rand())%10)+0.5f*((float)i))/40.0f)) );
 
 }
 
@@ -731,7 +754,7 @@ void desenha_inimigo(glm::mat4 model)
 // Limite de tiro na tela
 int limite_do_tiro (BULLET tiro, int tiro_na_tela)
 {
-    if(roundf(tiro.pos_x) >= 30)
+    if(roundf(tiro.pos_x) >= 15)
     {
         return 0;
     }
@@ -743,7 +766,9 @@ int limite_do_tiro (BULLET tiro, int tiro_na_tela)
 
 int tiro_acertou (BULLET tiro, ENEMY inimigo)
 {
-    if (roundf(tiro.pos_x) == roundf(inimigo.pos_x) && roundf(tiro.pos_y) == roundf(inimigo.pos_y) && roundf(tiro.pos_z) == roundf(inimigo.pos_z) && inimigo.vivo == 1)
+    if( ((inimigo.pos_z-1.15f-inimigo.size_mod<=tiro.pos_z && tiro.pos_z<=inimigo.pos_z+1.15f+inimigo.size_mod)
+       ||(inimigo.pos_z-1.15f-inimigo.size_mod<=tiro.pos_z && tiro.pos_z<=inimigo.pos_z+1.15f+inimigo.size_mod))
+       && roundf(inimigo.pos_x) == roundf(tiro.pos_x) && inimigo.vivo == 1)
     {
         return 1;
     }
@@ -755,7 +780,9 @@ int tiro_acertou (BULLET tiro, ENEMY inimigo)
 
 int colisao_com_inimigo (SPACESHIP nave, ENEMY inimigo)
 {
-    if (roundf(nave.pos_x ) == roundf(inimigo.pos_x) && roundf(nave.pos_y) == roundf(inimigo.pos_y) && roundf(nave.pos_z ) == roundf(inimigo.pos_z))
+    if( ((inimigo.pos_z-0.75f-inimigo.size_mod<=nave.pos_z-0.45f && nave.pos_z-0.45f<=inimigo.pos_z+0.75f+inimigo.size_mod)
+       ||(inimigo.pos_z-0.75f-inimigo.size_mod<=nave.pos_z+0.45f && nave.pos_z+0.45f<=inimigo.pos_z+0.75f+inimigo.size_mod))
+       && roundf(inimigo.pos_x) == roundf(nave.pos_x))
     {
         colisao = 1;
         return colisao;
@@ -1271,6 +1298,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // g_LeftMouseButtonPressed como true, para saber que o usuário está
         // com o botão esquerdo pressionado.
         glfwGetCursorPos(window, &g_LastCursorPosX, &g_LastCursorPosY);
+
         g_LeftMouseButtonPressed = true;
     }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
@@ -1413,40 +1441,45 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
 
-    // O código abaixo implementa a seguinte lógica:
-    //   Se apertar tecla X       então g_AngleX += delta;
-    //   Se apertar tecla shift+X então g_AngleX -= delta;
-    //   Se apertar tecla Y       então g_AngleY += delta;
-    //   Se apertar tecla shift+Y então g_AngleY -= delta;
-    //   Se apertar tecla Z       então g_AngleZ += delta;
-    //   Se apertar tecla shift+Z então g_AngleZ -= delta;
+//    float delta = 3.141592 / 16; // 22.5 graus, em radianos.
 
-    float delta = 3.141592 / 16; // 22.5 graus, em radianos.
+//  O código abaixo implementa a seguinte lógica:
+//      Se apertar tecla X       então g_AngleX += delta;
+//      Se apertar tecla shift+X então g_AngleX -= delta;
+//      Se apertar tecla Y       então g_AngleY += delta;
+//      Se apertar tecla shift+Y então g_AngleY -= delta;
+//      Se apertar tecla Z       então g_AngleZ += delta;
+//      Se apertar tecla shift+Z então g_AngleZ -= delta;
 
-    if (key == GLFW_KEY_X && action == GLFW_PRESS)
-    {
-        g_AngleX += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
-    }
-
-    if (key == GLFW_KEY_Y && action == GLFW_PRESS)
-    {
-        g_AngleY += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
-    }
-    if (key == GLFW_KEY_Z && action == GLFW_PRESS)
-    {
-        g_AngleZ += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
-    }
-
-    // Se o usuário apertar a tecla espaço, resetamos os ângulos de Euler para zero.
+//    if (key == GLFW_KEY_X && action == GLFW_PRESS)
+//    {
+//        g_AngleX += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
+//    }
+//
+//    if (key == GLFW_KEY_Y && action == GLFW_PRESS)
+//    {
+//        g_AngleY += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
+//    }
+//    if (key == GLFW_KEY_Z && action == GLFW_PRESS)
+//    {
+//        g_AngleZ += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
+//    }
+//
+//    // Se o usuário apertar a tecla espaço, resetamos os ângulos de Euler para zero.
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
-        g_AngleX = 0.0f;
-        g_AngleY = 0.0f;
-        g_AngleZ = 0.0f;
-        g_ForearmAngleX = 0.0f;
-        g_ForearmAngleZ = 0.0f;
-        g_TorsoPositionX = 0.0f;
-        g_TorsoPositionY = 0.0f;
+        g_PressSpace = true;
+//        g_AngleX = 0.0f;
+//        g_AngleY = 0.0f;
+//        g_AngleZ = 0.0f;
+//        g_ForearmAngleX = 0.0f;
+//        g_ForearmAngleZ = 0.0f;
+//        g_TorsoPositionX = 0.0f;
+//        g_TorsoPositionY = 0.0f;
+    }
+    if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE)
+    {
+        g_PressSpace = false;
     }
 
     // Se o usuário apertar a tecla P, utilizamos projeção perspectiva.
@@ -1482,6 +1515,8 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         else
         {
             nave.pos_z = nave.pos_z - DISTANCIA;
+            z = z - DISTANCIA;
+            movement = movement - DISTANCIA*0.97f;
         }
 
     }
@@ -1491,6 +1526,8 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         else
         {
             nave.pos_z = nave.pos_z + DISTANCIA;
+            z = z + DISTANCIA;
+            movement = movement + DISTANCIA*0.97f;
         }
     }
     /*
@@ -1582,6 +1619,35 @@ void TextRendering_ShowEulerAngles(GLFWwindow* window)
     snprintf(buffer, 80, "Euler Angles rotation matrix = Z(%.2f)*Y(%.2f)*X(%.2f)\n", g_AngleZ, g_AngleY, g_AngleX);
 
     TextRendering_PrintString(window, buffer, -1.0f+pad/10, -1.0f+2*pad/10, 1.0f);
+}
+
+void TextRendering_Instructions(GLFWwindow* window)
+{
+    char buffer[80];
+
+    snprintf(buffer, 80, "Aperte Z para atirar");
+
+    TextRendering_PrintString(window, buffer, -0.25f, 0.60f, 1.0f);
+
+    snprintf(buffer, 80, "Use as setas para se esquivar");
+
+    TextRendering_PrintString(window, buffer, -0.30f, 0.55f, 1.0f);
+}
+
+//Mostra um Game Over e score
+void TextRendering_GameOver(GLFWwindow* window)
+{
+
+    char buffer[80];
+
+    snprintf(buffer, 80, "GAME OVER");
+
+    TextRendering_PrintString(window, buffer, -0.75f, 0.0f, 10.0f);
+
+
+    snprintf(buffer, 80, "Seu score: %i\n    em %.2f segundos\n", nave.pontos,tempo);
+
+    TextRendering_PrintString(window, buffer, -0.75f, -0.50f, 4.0f);
 }
 
 //Escrevemos na tela a pontuação do jogador

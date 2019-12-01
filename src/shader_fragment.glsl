@@ -166,13 +166,13 @@ void main()
 
     // Equação de Iluminação
     float lambert = max(0,dot(n,l));
-    //float lambert2 = 1 - pow(max(0,dot(n,l)), 0.2);
 
     // Modelo de iluminação de Phong
     float phong_specular_term  = pow(float(max(0.0f,dot(r,v))),q);
 
     // Espectro da fonte de iluminação
     vec3 light_spectrum = vec3(1.0,1.0,1.0);
+
     // Espectro da luz ambiente
     vec3 ambient_light_spectrum = vec3(0.5,0.5,0.5);
 
