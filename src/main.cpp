@@ -325,8 +325,8 @@ float posicao_x_do_tiro = 0.0f;
 
 int colisao = 0;
 
-SPACESHIP nave;             // Coordenadas da nave no cenário.
-BULLET tiro[8];                // Coordenadas do projétil no cenário.
+SPACESHIP nave;                     // Coordenadas da nave no cenário.
+BULLET tiro[N_TIRO];                // Coordenadas do projétil no cenário.
 SPACESHIP camera;
 ENEMY inimigos[NUM_INIMIGOS]; // A posição dos inimigos no cenário. Também diz se estão vivos ou não.
 
